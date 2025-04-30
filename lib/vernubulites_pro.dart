@@ -601,7 +601,7 @@ class VernubulitesPro {
   static Future<List<Vulnerability>> _checkWebSocketIssues(String base) async {
     final vulns = <Vulnerability>[];
     try {
-      final wsUrl = base.replaceFirst(RegExp(r'^http'), 'ws') + '/ws';
+      final wsUrl = '${base.replaceFirst(RegExp(r'^http'), 'ws')}/ws';
       final ws = await WebSocket.connect(wsUrl).timeout(_timeout);
       ws.add(json.encode({'action': 'ping'}));
       final msg = await ws.first.timeout(Duration(seconds: 3));
