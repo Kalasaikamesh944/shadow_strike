@@ -8,6 +8,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'vernubulites_pro.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // Cyberpunk color palette
 const Color bgColor = Color(0xFF0A0A0A);
@@ -76,11 +77,13 @@ class VernubulitesProApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'SHADOWSTRIKE PRO',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: bgColor,
+        // make all scaffolds transparent so the background peek through
+        scaffoldBackgroundColor: Colors.transparent,
         textTheme: _terminalTextTheme,
         appBarTheme: AppBarTheme(
-          backgroundColor: Colors.black,
+          backgroundColor: Colors.black.withOpacity(0.7),
           centerTitle: true,
           titleTextStyle: _terminalTextTheme.displayMedium?.copyWith(
             shadows: [
@@ -91,7 +94,7 @@ class VernubulitesProApp extends StatelessWidget {
           iconTheme: const IconThemeData(color: hackerGreen),
         ),
         cardTheme: CardTheme(
-          color: Colors.black,
+          color: Colors.black.withOpacity(0.5),
           elevation: 0,
           margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
@@ -101,8 +104,18 @@ class VernubulitesProApp extends StatelessWidget {
         ),
         dividerTheme: DividerThemeData(color: hackerGreen.withOpacity(0.3)),
       ),
+      // wrap every screen in a Stack that paints your image behind it
+      builder: (context, child) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset('assets/cyber.png', fit: BoxFit.cover),
+            ),
+            if (child != null) child,
+          ],
+        );
+      },
       home: const HomeScreen(),
-      debugShowCheckedModeBanner: false,
     );
   }
 }
@@ -928,7 +941,6 @@ class AboutScreen extends StatelessWidget {
             ).textTheme.bodyLarge?.copyWith(color: cyberBlue),
           ),
           const SizedBox(height: 8),
-          _buildFeatureItem(context, '100+ vulnerability checks'),
           _buildFeatureItem(context, 'OWASP Top 10 coverage'),
           _buildFeatureItem(context, 'Real-time scanning engine'),
           _buildFeatureItem(context, 'Detailed reporting'),
@@ -980,9 +992,16 @@ class AboutScreen extends StatelessWidget {
 
 class DonateScreen extends StatelessWidget {
   const DonateScreen({super.key});
+
+  static const _upiId = '9392278183@ibl';
+  static const _payeeName = 'ShadowStrike Pro';
+  static const _note = 'Thank you for supporting ShadowStrike Pro';
+  static const _currency = '150';
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: const Text('SUPPORT DEVELOPMENT')),
       body: Center(
         child: SingleChildScrollView(
@@ -1014,8 +1033,9 @@ class DonateScreen extends StatelessWidget {
               _buildDonationOption(
                 context,
                 title: 'UPI',
-                subtitle: '9392278183@ibl',
+                subtitle: _upiId,
                 icon: Icons.payment,
+                onTap: () => _launchUpiPayment(context),
               ),
             ],
           ),
@@ -1029,6 +1049,7 @@ class DonateScreen extends StatelessWidget {
     required String title,
     required String subtitle,
     required IconData icon,
+    required VoidCallback onTap,
   }) {
     return Container(
       width: double.infinity,
@@ -1044,10 +1065,36 @@ class DonateScreen extends StatelessWidget {
         ),
         subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
         trailing: Icon(Icons.arrow_forward, color: hackerGreen),
-        onTap: () {
-          /* handle tap */
-        },
+        onTap: onTap,
       ),
     );
+  }
+
+  Future<void> _launchUpiPayment(BuildContext context) async {
+    final uri = Uri(
+      scheme: 'upi',
+      host: 'pay',
+      queryParameters: {
+        'pa': _upiId,
+        'pn': _payeeName,
+        'tn': _note,
+        'am': '', // leave blank to let user enter amount
+        'cu': _currency,
+      },
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Could not launch UPI app. Please ensure you have one installed.',
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          backgroundColor: matrixRed.withOpacity(0.8),
+        ),
+      );
+    }
   }
 }
