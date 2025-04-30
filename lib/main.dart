@@ -9,6 +9,8 @@ import 'package:path_provider/path_provider.dart';
 import 'vernubulites_pro.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:android_intent_plus/android_intent.dart';
+
 
 // Cyberpunk color palette
 const Color bgColor = Color(0xFF0A0A0A);
@@ -899,7 +901,7 @@ class AboutScreen extends StatelessWidget {
           _buildInfoRow(context, 'VERSION', '1.0.0'),
           _buildInfoRow(context, 'DEVELOPER', 'KALA SECURITY PROGRAM'),
           _buildInfoRow(context, 'LICENSE', 'MIT OPEN SOURCE'),
-          _buildInfoRow(context, 'BUILD', '2024.04.1'),
+          _buildInfoRow(context, 'BUILD', '2025.04.30'),
         ],
       ),
     );
@@ -990,13 +992,14 @@ class AboutScreen extends StatelessWidget {
   }
 }
 
+
 class DonateScreen extends StatelessWidget {
   const DonateScreen({super.key});
 
-  static const _upiId = '9392278183@ibl';
-  static const _payeeName = 'ShadowStrike Pro';
-  static const _note = 'Thank you for supporting ShadowStrike Pro';
-  static const _currency = '150';
+  static const _upiId    = '9392278183@ibl';
+  static const _payee    = 'ShadowStrike Pro';
+  static const _note     = 'Thank you for supporting ShadowStrike Pro';
+  static const _currency = 'INR';
 
   @override
   Widget build(BuildContext context) {
@@ -1018,10 +1021,12 @@ class DonateScreen extends StatelessWidget {
               Text(
                 'SUPPORT SHADOWSTRIKE PRO',
                 style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  shadows: [
-                    Shadow(color: hackerGreen.withOpacity(0.5), blurRadius: 10),
-                  ],
-                ),
+                      shadows: [
+                        Shadow(
+                            color: hackerGreen.withOpacity(0.5),
+                            blurRadius: 10),
+                      ],
+                    ),
               ),
               const SizedBox(height: 16),
               Text(
@@ -1030,12 +1035,19 @@ class DonateScreen extends StatelessWidget {
                 style: Theme.of(context).textTheme.bodyLarge,
               ),
               const SizedBox(height: 32),
+              // PhonePe button
               _buildDonationOption(
                 context,
-                title: 'UPI',
-                subtitle: _upiId,
+                title: 'Pay via PhonePe',
+                icon: Icons.phone_android,
+                onTap: () => _launchUpiInApp(context, 'com.phonepe.app'),
+              ),
+              // Google Pay button
+              _buildDonationOption(
+                context,
+                title: 'Pay via Google Pay',
                 icon: Icons.payment,
-                onTap: () => _launchUpiPayment(context),
+                onTap: () => _launchUpiInApp(context, 'com.google.android.apps.nbu.paisa.user'),
               ),
             ],
           ),
@@ -1047,7 +1059,6 @@ class DonateScreen extends StatelessWidget {
   Widget _buildDonationOption(
     BuildContext context, {
     required String title,
-    required String subtitle,
     required IconData icon,
     required VoidCallback onTap,
   }) {
@@ -1059,42 +1070,57 @@ class DonateScreen extends StatelessWidget {
         leading: Icon(icon, color: hackerGreen),
         title: Text(
           title,
-          style: Theme.of(
-            context,
-          ).textTheme.bodyLarge?.copyWith(color: cyberBlue),
+          style:
+              Theme.of(context).textTheme.bodyLarge?.copyWith(color: cyberBlue),
         ),
-        subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
         trailing: Icon(Icons.arrow_forward, color: hackerGreen),
         onTap: onTap,
       ),
     );
   }
 
-  Future<void> _launchUpiPayment(BuildContext context) async {
-    final uri = Uri(
+  Future<void> _launchUpiInApp(BuildContext context, String package) async {
+    final upiUri = Uri(
       scheme: 'upi',
       host: 'pay',
       queryParameters: {
         'pa': _upiId,
-        'pn': _payeeName,
+        'pn': _payee,
         'tn': _note,
-        'am': '', // leave blank to let user enter amount
+        'am': '',        // user enters amount
         'cu': _currency,
       },
-    );
+    ).toString();
 
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Could not launch UPI app. Please ensure you have one installed.',
-            style: Theme.of(context).textTheme.bodyMedium,
+    // First try explicit Android intent:
+    final intent = AndroidIntent(
+      action: 'action_view',
+      data: upiUri,
+      package: package,
+    );
+    try {
+      await intent.launch();
+    } catch (_) {
+      // fallback: open chooser for any UPI app
+      if (await canLaunchUrl(Uri.parse(upiUri))) {
+        await launchUrl(Uri.parse(upiUri));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${_appName(package)} not available',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            backgroundColor: matrixRed.withOpacity(0.8),
           ),
-          backgroundColor: matrixRed.withOpacity(0.8),
-        ),
-      );
+        );
+      }
     }
+  }
+
+  String _appName(String pkg) {
+    if (pkg.contains('phonepe')) return 'PhonePe';
+    if (pkg.contains('paisa')) return 'Google Pay';
+    return 'UPI app';
   }
 }
